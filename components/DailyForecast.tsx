@@ -1,63 +1,95 @@
-import { AppContext } from "@/context/context/AppContext";
+import { ThemeContext } from "@/context/context/ThemeContext";
 import { useContext } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
 
 export type DailyItemData = {
     day: string;
     icon: string;
     minTemp: number;
     maxTemp: number;
-    airQuality: number; // 0–100 scale
+    rainChance: number;
 };
 
 type Props = {
     items: DailyItemData[];
 };
+const isWeb = Platform.OS === "web";
 
 export default function DailyForecast({ items }: Props) {
-    const ctx = useContext(AppContext);
+    const ctx = useContext(ThemeContext);
+    const scrollRef = useRef<ScrollView>(null);
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [items]);
+
     return (
         <ScrollView
+            ref={scrollRef}
+            bounces={false}
+            alwaysBounceVertical={false}
+            overScrollMode="never"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-                gap: 5,
-                paddingHorizontal: 10,
+            style={[
+                {gap: 5,
                 paddingTop: 5,
                 width: "100%",
-            }}
+                paddingBottom: 50,},
+                isWeb && ({ maxHeight: 300, overflowY: "auto" } as any),
+            ]
+
+            }
         >
             {items.map((item, index) => (
                 <View key={`${item.day}-${index}`}
                     style={{
                         flexDirection: "row",
-                        justifyContent: "space-between",
                         alignItems: "center",
+                        justifyContent: "space-between",
                         width: "100%",
-                        paddingVertical: 10,
+                        paddingVertical: 15,
                         borderBottomWidth: 0.3,
-                        borderBottomColor: ctx.getAccent(),
+                        borderBottomColor: ctx.getSeparator(),
                     }}
                 >
                     {/* Día */}
-                    <Text style={{ fontSize: 18, color: "white" }}>
-                        {item.day}
-                    </Text>
+                    <View style={{ flex: 1, maxWidth: 40 }}>
+                        <Text style={{ fontSize: 18, color: "white" }}>
+                            {item.day}
+                        </Text>
+                    </View>
 
                     {/* Ícono */}
-                    <Text style={{ fontSize: 20, color: "white" }}>
-                        {item.icon}
-                    </Text>
+                    <View style={{ flex: 1, maxWidth: 40, alignItems: "center" }}>
+                        <Text style={{ fontSize: 20, color: "white" }}>
+                            {item.icon}
+                        </Text>
+                    </View>
 
 
                     {/* Temperaturas */}
-                    <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{
+                        maxWidth: 120,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        flex: 2,
+                        justifyContent: "space-between"
+                    }}>
                         <Text style={{ fontSize: 18, color: "#8DD5FF" }}>
                             {item.minTemp}°
                         </Text>
 
-                        <Text style={{ fontSize: 18, color: "white", opacity: 0.7 }}>
-                            Aire: {item.airQuality}°
-                        </Text>
+                        <View
+                            style={{
+                                flex: 1,
+                                alignItems: "center"
+                            }}
+                        >
+                            <Text style={{ fontSize: 10 }}>🌧️</Text>
+                            <Text style={{ fontSize: 8, color: ctx.getPrimaryText(), fontWeight: 800 }}>
+                                {item.rainChance}%
+                            </Text>
+                        </View>
 
                         <Text style={{ fontSize: 18, color: "#fff" }}>
                             {item.maxTemp}°

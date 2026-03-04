@@ -1,4 +1,5 @@
-import { View, Text, ScrollView } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import { useRef, useEffect } from "react";
 
 export type HourlyItemData = {
     hour: string;
@@ -11,41 +12,47 @@ type Props = {
 };
 
 export default function HourlyForecast({ items }: Props) {
+    const scrollRef = useRef<ScrollView>(null);
+    useEffect(() => {
+        scrollRef.current?.scrollTo({ x: 0, animated: false });
+    }, [items]);
+
     return (
         <ScrollView
+            ref={scrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ alignSelf: 'center' }}
+                        style={{ width: "100%" }}
             contentContainerStyle={{
-                gap: 0,
+                paddingTop: 15,
+                paddingBottom: 15,
                 alignItems: 'center',
+                gap:8,
             }}
         >
-            {items.map((item) => (
+            {items.map((item, idx) => (
                 <View
-                    key={item.hour}
+                    key={`${item.hour}-${idx}`}
                     style={{
                         alignItems: "center",
-                        padding: 15,
-                        gap: 15,
+                        paddingHorizontal: 8,
                         borderRadius: 16,
-                        // backgroundColor: "#f2f2f2",
                         minWidth: 30,
                     }}
                 >
                     {/* Hora */}
-                    <Text style={{ fontSize: 14, color: "white", marginBottom: 4 }}>
+                    <Text style={{ fontSize: 14, color: "white" }}>
                         {item.hour}
                     </Text>
 
                     {/* Ícono */}
-                    <Text style={{ fontSize: 20, color: "white", marginVertical: 4 }}>
+                    <Text style={{ fontSize: 20, color: "white", marginVertical: 20 }}>
                         {item.icon}
                     </Text>
 
 
                     {/* Temperatura */}
-                    <Text style={{ fontSize: 14, color: "white", fontWeight: "400" }}>
+                    <Text style={{ fontSize: 14, color: "white" }}>
                         {item.temp}°
                     </Text>
                 </View>

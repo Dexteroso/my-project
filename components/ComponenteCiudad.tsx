@@ -7,7 +7,7 @@ interface IComponenteCiudad {
 export function ComponenteCiudad(props: IComponenteCiudad) {
     return <View>
         <Text style={{
-            fontSize: 35,
+            fontSize: 30,
             color: "white",
             fontWeight: "400"
         }}>{props.name}</Text>

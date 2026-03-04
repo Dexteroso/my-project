@@ -1,14 +1,15 @@
+import { ThemeProvider } from "@/context/context/ThemeContext";
 import { Stack } from "expo-router";
-import { AppProvider } from "@/context/context/AppContext";
 
 export default function RootLayout() {
   return (
-    <AppProvider>
+    <ThemeProvider>
       <Stack 
         screenOptions={{
+          animation: "fade",
           headerShown: false,
         }}
       />
-    </AppProvider>
+    </ThemeProvider>
   );
 }

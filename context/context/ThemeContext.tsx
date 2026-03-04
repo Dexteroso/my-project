@@ -1,50 +1,55 @@
 import { createContext, useState } from "react";
 
-export interface IAppContext {
+export interface IThemeContext {
     isModoOscuro: boolean;
     toggleModo: () => void;
     getPrimaryText: () => string;
     getSecondaryText: () => string;
     getCardBg: () => string;
     getCardBgBlur: () => string;
-    getAccent: () => string;
+    getSeparator: () => string;
+    getInfoText: () => string;
 }
 
-export const AppContext = createContext<IAppContext>({
+export const ThemeContext = createContext<IThemeContext>({
     isModoOscuro: false,
     toggleModo: () => { },
     getPrimaryText: () => "#000000",
-    getSecondaryText: () => "#54bdf2",
+    getSecondaryText: () => "#B1E6FF",
     getCardBg: () => "#317AC2",
     getCardBgBlur: () => "#317AC2",
-    getAccent: () => "#73A1DC",
+    getSeparator: () => "#73A1DC",
+    getInfoText: () => "#ffffff",
 });
 
-interface IAppProvider {
+interface IThemeProvider {
     children: any;
 }
 
-export const AppProvider = ({ children }: IAppProvider) => {
+export const ThemeProvider = ({ children }: IThemeProvider) => {
     const [isModoOscuro, setIsModoOscuro] = useState(false);
 
     const TEXT_ON_DARK = "#6A7293";
-    const TEXT_ON_LIGHT = "#54bdf2";
+    const TEXT_ON_LIGHT = "#9DDFFF";
     const CARD_BG_LIGHT = "#317AC2";
     const CARD_BG_DARK = "#2C304E";
-    const ACCENT_COLOR = "#73A1DC";
+    const SEPARATOR_COLOR = "#73A1DC";
+    const INFO_TEXT_DARK = "#7982a6";   
+    const INFO_TEXT_LIGHT = "#a9c6eb";
 
     const getPrimaryText = () => (isModoOscuro ? TEXT_ON_DARK : TEXT_ON_LIGHT);
     const getSecondaryText = () => (isModoOscuro ? TEXT_ON_DARK : TEXT_ON_LIGHT);
     const getCardBg = () => (isModoOscuro ? CARD_BG_DARK : CARD_BG_LIGHT);
     const getCardBgBlur = () => (isModoOscuro ? "rgba(44, 48, 78, 0.8)" : "rgba(49, 122, 194, 0.8)");
-    const getAccent = () => ACCENT_COLOR;
+    const getSeparator = () => SEPARATOR_COLOR;
+    const getInfoText = () => (isModoOscuro ? INFO_TEXT_DARK : INFO_TEXT_LIGHT);
 
     const toggleModo = () => setIsModoOscuro((prev) => !prev);
 
     return (
-        <AppContext.Provider value={{ toggleModo, isModoOscuro, getPrimaryText, getSecondaryText, getCardBg, getCardBgBlur, getAccent }}>
+        <ThemeContext.Provider value={{ toggleModo, isModoOscuro, getPrimaryText, getSecondaryText, getCardBg, getCardBgBlur, getSeparator, getInfoText }}>
 
             {children}
-        </AppContext.Provider>
+        </ThemeContext.Provider>
     );
 };

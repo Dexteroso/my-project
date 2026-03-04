@@ -1,8 +1,7 @@
 import { Text, View } from "react-native";
 
-//Aqquí especificamos la estructura del componente
 interface IComponenteGrados {
-    value: number
+    value: string
 }
 
 export function ComponenteGrados(props: IComponenteGrados) {
@@ -14,14 +13,11 @@ export function ComponenteGrados(props: IComponenteGrados) {
             }}
         >
             <Text style={{
-                fontSize: 110,
+                fontSize: 60,
                 color: "white",
-                lineHeight: 110,
+                lineHeight: 60,
                 fontWeight: "200",
-                // Ajusté el espacio entre el número y el símbolo de grados para que se vean más juntos
-                marginTop: -5,
-                marginBottom: -15,
-            }}>{props.value}°</Text>
+            }}>{props.value}</Text>
         </View>
     )
 }

@@ -1,17 +1,33 @@
+import { ThemeContext } from "@/context/context/ThemeContext";
+import { useContext } from "react";
 import { Text, View } from "react-native";
 
-//Aqquí especificamos la estructura del componente
 interface IComponenteInfo {
-    description: string
+    description: string;
+    tempMax?: string;
+    tempMin?: string;
 }
 
 export function ComponenteInfo(props: IComponenteInfo) {
+    const ctx = useContext(ThemeContext);
+
     return <View>
         <Text style={{
             fontSize: 18,
-            color: "white",
+            color: ctx.getSecondaryText(),
             fontWeight: "400",
-            textAlign: "center"
-        }}>{props.description}</Text>
+            textAlign: "center",
+            marginTop: 0
+        }}>{props.description}
+        </Text>
+
+        <Text style={{
+            fontSize: 16,
+            color: "white",
+            textAlign: "center",
+            marginTop: 5
+        }}>
+            Máxima: {props.tempMax ?? "-"}   Mínima: {props.tempMin ?? "-"}
+        </Text>
     </View>
 }

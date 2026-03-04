@@ -1,54 +1,182 @@
 import { ComponenteCiudad } from "@/components/ComponenteCiudad";
 import { ComponenteGrados } from "@/components/ComponenteGrados";
-import HourlyForecast, { HourlyItemData } from "@/components/HourlyForecast";
-import { Saludo } from "@/components/Saludo";
-import { Button, Text, View, Platform, Image, Pressable } from "react-native";
-import { router } from "expo-router";
 import { ComponenteInfo } from "@/components/ComponenteInfo";
-import { ImageBackground } from "react-native";
 import DailyForecast, { DailyItemData } from "@/components/DailyForecast";
-import { useContext } from "react";
-import { AppContext } from "@/context/context/AppContext";
+import HourlyForecast, { HourlyItemData } from "@/components/HourlyForecast";
+import { ThemeContext } from "@/context/context/ThemeContext";
+import { router } from "expo-router";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Image, ImageBackground, Pressable, Text, View, TextInput, Keyboard, Platform } from "react-native";
+import { useWindowDimensions } from "react-native";
 
 
 export default function Index() {
 
-  const ctx = useContext(AppContext);
-  console.log("modo:", ctx.isModoOscuro);
+  const ctx = useContext(ThemeContext);
 
-  const clima = {
-    ciudad: "Monterrey",
-    grados: 35,
-    info: "Parcialmente Soleado" + "\n" + "Maxima: 38º Mínima: 28º"
-  }
+  const toTitleCase = (texto: string) =>
+    texto
+      .toLowerCase()
+      .split(" ")
+      .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+      .join(" ");
 
-  const hourly: HourlyItemData[] = [
-    { hour: "Ahora", icon: "☀️", temp: 35 },
-    { hour: "2p.m.", icon: "☀️", temp: 37 },
-    { hour: "3p.m.", icon: "☀️", temp: 38 },
-    { hour: "4p.m.", icon: "⛅", temp: 36 },
-    { hour: "5p.m.", icon: "⛅", temp: 33 },
-    { hour: "6p.m.", icon: "⛅", temp: 28 },
-    { hour: "7p.m.", icon: "🌧️", temp: 25 },
-    { hour: "8p.m.", icon: "🌧️", temp: 25 },
-    { hour: "9p.m.", icon: "🌧️", temp: 23 },
-    { hour: "10p.m.", icon: "🌧️", temp: 21 },
-  ];
+  const [ciudad, setCiudad] = useState("-");
+  const [temperatura, setTemperatura] = useState("-");
+  const [descripcion, setDescripcion] = useState("-");
+  const [tempMax, setTempMax] = useState("-");
+  const [tempMin, setTempMin] = useState("-");
+  const [city, setCity] = useState("Monterrey");
+  const [cityDraft, setCityDraft] = useState("Monterrey");
+  const [isCityInputOpen, setIsCityInputOpen] = useState(false);
+  const cityInputRef = useRef<TextInput>(null);
+  const [hourly, setHourly] = useState<HourlyItemData[]>([]);
+  const [daily, setDaily] = useState<DailyItemData[]>([]);
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+  const isDesktop = isWeb && width >= 768;
+  const CONTENT_MAX_WIDTH = isDesktop ? 520 : 500;
 
-  const daily: DailyItemData[] = [
-    { day: "Hoy", icon: "☀️", minTemp: 28, maxTemp: 38, airQuality: 45 },
-    { day: "Mar", icon: "⛅", minTemp: 27, maxTemp: 36, airQuality: 52 },
-    { day: "Mié", icon: "🌧️", minTemp: 24, maxTemp: 30, airQuality: 60 },
-    { day: "Jue", icon: "⛅", minTemp: 25, maxTemp: 33, airQuality: 40 },
-    { day: "Vie", icon: "☀️", minTemp: 26, maxTemp: 35, airQuality: 35 },
-    { day: "Sáb", icon: "☀️", minTemp: 26, maxTemp: 35, airQuality: 35 },
-    { day: "Dom", icon: "☀️", minTemp: 26, maxTemp: 35, airQuality: 42 },
-    { day: "Lun", icon: "⛅", minTemp: 24, maxTemp: 33, airQuality: 46 },
-    { day: "Mar", icon: "⛅", minTemp: 23, maxTemp: 28, airQuality: 55 },
-    { day: "Mié", icon: "🌧️", minTemp: 24, maxTemp: 31, airQuality: 34 },
-    { day: "Jue", icon: "☀️", minTemp: 28, maxTemp: 38, airQuality: 45 },
-  ];
-  // Esto es lo que se va a mostrar en pantalla
+  useEffect(() => {
+    const cargarClima = async () => {
+      try {
+        const API_KEY = "2378f72f19c9c1a5d2a82ff0e5a99866";
+        const cityName = city;
+
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
+          cityName
+        )}&appid=${API_KEY}&units=metric&lang=es`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.message || "Error al consultar OpenWeather");
+        }
+
+        setCiudad(data.name);
+        setTemperatura(`${Math.round(data.main.temp)}°`);
+
+        {/* Description en Title Case (Primera Letra De Cada Palabra) */ }
+        const descripcionAPI: string = data?.weather?.[0]?.description ?? "-";
+        setDescripcion(toTitleCase(descripcionAPI));
+
+        {/* Hourly 24 horas */ }
+        const hourlyUrl = `https://pro.openweathermap.org/data/2.5/forecast/hourly?q=${encodeURIComponent(
+          cityName
+        )}&appid=${API_KEY}&units=metric&lang=es`;
+
+        const hourlyResponse = await fetch(hourlyUrl);
+        const hourlyData = await hourlyResponse.json();
+
+        if (!hourlyResponse.ok) {
+          throw new Error(hourlyData?.message || "Error al consultar Hourly");
+        }
+
+        {/* mapeo iconCode */ }
+        const iconToEmoji = (iconCode: string) => {
+          if (iconCode.startsWith("01")) return "☀️";
+          if (iconCode.startsWith("02")) return "⛅";
+          if (iconCode.startsWith("03") || iconCode.startsWith("04")) return "☁️";
+          if (iconCode.startsWith("09") || iconCode.startsWith("10")) return "🌧️";
+          if (iconCode.startsWith("11")) return "⛈️";
+          if (iconCode.startsWith("13")) return "❄️";
+          return "🌫️";
+        };
+
+        const now = new Date();
+        const list: any[] = hourlyData?.list ?? [];
+
+        let startIdx = list.findIndex((it) => new Date(it.dt * 1000) >= now);
+        if (startIdx < 0) startIdx = 0;
+
+        const next24: HourlyItemData[] = list.slice(startIdx, startIdx + 24).map((it, idx) => {
+          const d = new Date(it.dt * 1000 - 3600000);
+          const iconCode = it?.weather?.[0]?.icon ?? "01d";
+
+          const hourLabel =
+            idx === 0
+              ? "Ahora"
+              : d
+                .toLocaleTimeString("es-MX", { hour: "numeric" })
+                .toLowerCase();
+
+          return {
+            hour: hourLabel,
+            icon: iconToEmoji(iconCode),
+            temp: Math.round(it?.main?.temp ?? 0),
+          };
+        });
+
+        setHourly(next24);
+
+        {/* Pronóstico a 10 días */ }
+        const dailyUrl = `https://pro.openweathermap.org/data/2.5/forecast/daily?q=${encodeURIComponent(
+          cityName
+        )}&cnt=10&appid=${API_KEY}&units=metric&lang=es`;
+
+        const dailyResponse = await fetch(dailyUrl);
+        const dailyData = await dailyResponse.json();
+
+        if (!dailyResponse.ok) {
+          throw new Error(dailyData?.message || "Error al consultar Daily 10 días");
+        }
+
+        setTempMax(`${Math.round(dailyData.list[0].temp.max)}°`);
+        setTempMin(`${Math.round(dailyData.list[0].temp.min)}°`);
+
+        setDaily(
+          (dailyData.list || []).map((item: any, idx: number) => {
+            const date = new Date(item.dt * 1000);
+
+            const label =
+              idx === 0
+                ? "Hoy"
+                : date
+                  .toLocaleDateString("es-MX", { weekday: "short" })
+                  .replace(".", "");
+
+            const iconCode = item?.weather?.[0]?.icon ?? "01d";
+
+            const icon = iconCode.startsWith("01")
+              ? "☀️"
+              : iconCode.startsWith("02")
+                ? "⛅"
+                : iconCode.startsWith("03") || iconCode.startsWith("04")
+                  ? "☁️"
+                  : iconCode.startsWith("09") || iconCode.startsWith("10")
+                    ? "🌧️"
+                    : iconCode.startsWith("11")
+                      ? "⛈️"
+                      : iconCode.startsWith("13")
+                        ? "❄️"
+                        : "🌫️";
+
+            return {
+              day: toTitleCase(String(label)),
+              icon,
+              minTemp: Math.round(item.temp.min),
+              maxTemp: Math.round(item.temp.max),
+              rainChance: Math.round((item.pop ?? 0) * 100),
+            } as DailyItemData;
+          })
+        );
+      }
+
+      catch (err: any) {
+        console.log("Error clima:", err?.message || err);
+        setCiudad("Error");
+        setTemperatura("-");
+        setDescripcion("-");
+        setTempMax("-");
+        setTempMin("-");
+        setHourly([]);
+        setDaily([]);
+      }
+    };
+
+    cargarClima();
+  }, [city]);
 
   return (
     <ImageBackground
@@ -57,110 +185,215 @@ export default function Index() {
           ? require("../assets/ClimaImages/backgrounds/Night.jpg")
           : require("../assets/ClimaImages/backgrounds/Day.jpg")
       }
+      resizeMode="cover"
       style={[
         { flex: 1, width: "100%" },
         Platform.select({
           web: { minHeight: "100vh" as any },
         }),
       ]}
-      imageStyle={{ width: "100%", height: "100%" }}
-      resizeMode="cover"
+      imageStyle={{ width: "100%", height: "100%", resizeMode: "cover" }}
     >
+
+      {isCityInputOpen && (
+        <Pressable
+          onPress={() => {
+            setIsCityInputOpen(false);
+            setCityDraft(city);
+            Keyboard.dismiss();
+          }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            zIndex: 5000,
+          }}
+        />
+      )}
 
       <View
         style={{
           flex: 1,
           justifyContent: "flex-start",
           alignItems: "center",
-          marginTop: 180,
+          marginTop: 150,
         }}
       >
 
         <View style={{ gap: 0, alignItems: "center" }}>
-          <ComponenteCiudad name={clima.ciudad} />
-          <ComponenteGrados value={clima.grados} />
-          <ComponenteInfo description={clima.info} />
+          <ComponenteCiudad name={ciudad} />
+          <ComponenteGrados value={temperatura} />
+          <ComponenteInfo description={descripcion} tempMax={tempMax} tempMin={tempMin} />
         </View>
+
+
+
+        {isCityInputOpen && (
+          <View
+            style={{
+              position: "absolute",
+              top: 250,
+              alignSelf: "center",
+              width: "85%",
+              zIndex: 5000,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <TextInput
+              ref={cityInputRef}
+              value={cityDraft}
+              onChangeText={setCityDraft}
+              placeholder="Escribe una ciudad…"
+              placeholderTextColor={ctx.getSecondaryText()}
+              style={{
+                flex: 1,
+                backgroundColor: ctx.getCardBg(),
+                color: "white",
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: ctx.getSeparator(),
+              }}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="words"
+              onSubmitEditing={() => {
+                const cleaned = cityDraft.trim();
+                if (!cleaned) return;
+
+                setCity(cleaned);
+                setIsCityInputOpen(false);
+                Keyboard.dismiss();
+              }}
+            />
+            
+            {/* BOTÓN CANCELAR */}
+            <Pressable
+              onPress={() => {
+                setIsCityInputOpen(false);
+                setCityDraft(city);
+                Keyboard.dismiss();
+              }}
+              style={{
+                paddingHorizontal: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: ctx.getSecondaryText(),
+                  fontWeight: "500",
+                }}
+              >
+                Cancelar
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Hourly Forecast View */}
         <View style={{
-          marginTop: 50,
+          marginTop: 60,
           backgroundColor: ctx.getCardBg(),
           padding: 10,
           borderRadius: 16,
-          width: "90%"
+          width: "90%",
+          maxWidth: CONTENT_MAX_WIDTH,
         }}>
 
           <View style={{
+            flexDirection: "row",
+            alignSelf: "center",
+            justifyContent: "flex-start",
+            gap: 10,
             marginTop: 5,
-            width: "100%"
+            width: "100%",
+            paddingHorizontal: 10,
+            paddingBottom: 5,
+            borderBottomWidth: 0.3,
+            borderBottomColor: ctx.getSeparator(),
           }}>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "400",
-                marginBottom: 10,
-                textAlign: "center",
-                color: "white",
-                paddingBottom: 8,
-                borderBottomWidth: 0.3,
-                borderBottomColor: ctx.getAccent(),
-              }}>
-              Cielo soleado durante la mañana.{"\n"}
-              Parcialmente nublado a partir de las 4p.m.
-            </Text>
-            <HourlyForecast items={hourly} />
-          </View>
-        </View>
-
-        {/* // Daily Forecast View */}
-
-        {/* // Container*/}
-        <View
-          style={{
-            marginTop: 10,
-            backgroundColor: ctx.getCardBg(),
-            padding: 10,
-            borderRadius: 16,
-            width: "90%",
-            maxHeight: 400,
-            overflow: "hidden",
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-start",
-              paddingHorizontal: 10,
-              borderBottomWidth: 0.3,
-              borderBottomColor: ctx.getAccent(),
-              paddingBottom: 10,
-              width: "100%",
-              alignSelf: "center",
-              gap: 10,
-            }}
-          >
             <Image
               source={
                 ctx.isModoOscuro
-                  ? require("../assets/ClimaImages/icons/calendar/calendar-night.png")
-                  : require("../assets/ClimaImages/icons/calendar/calendar-day.png")
+                  ? require("../assets/ClimaImages/icons/24hr/clock-three-dark.png")
+                  : require("../assets/ClimaImages/icons/24hr/clock-three-light.png")
               }
-              style={{ width: 16, height: 16, marginRight: 6 }}
+              style={{ width: 16, height: 16 }}
               resizeMode="contain"
             />
             <Text
               style={{
-                fontSize: 15,
-                fontWeight: "600",
+                fontSize: 12,
+                fontWeight: "400",
                 color: ctx.getSecondaryText(),
-              }}
-            >
-              PRONÓSTICO PARA 10 DÍAS
+                marginBottom: 10,
+              }}>
+              PRONÓSTICO POR HORA
             </Text>
           </View>
-          <DailyForecast items={daily} />
+          <HourlyForecast items={hourly} />
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            marginTop: 10,
+            backgroundColor: ctx.getCardBg(),
+            paddingVertical: 15,
+            borderRadius: 16,
+            width: "90%",
+            overflow: "hidden",
+            paddingHorizontal: 10,
+            maxWidth: CONTENT_MAX_WIDTH,
+          }}
+        >
+          <View
+            style={{
+              paddingHorizontal: 10,
+              paddingTop: 1,
+              paddingBottom: 50,
+            }}>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "center",
+                justifyContent: "flex-start",
+                width: "100%",
+                gap: 10,
+                paddingBottom: 10,
+                borderBottomWidth: 0.3,
+                borderBottomColor: ctx.getSeparator(),
+              }}
+            >
+              <Image
+                source={
+                  ctx.isModoOscuro
+                    ? require("../assets/ClimaImages/icons/calendar/calendar-night.png")
+                    : require("../assets/ClimaImages/icons/calendar/calendar-day.png")
+                }
+                style={{ width: 16, height: 16 }}
+                resizeMode="contain"
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "400",
+                  color: ctx.getSecondaryText(),
+                }}
+              >
+                PRONÓSTICO PARA 10 DÍAS
+              </Text>
+            </View>
+            <DailyForecast items={daily} />
+          </View>
         </View>
       </View>
 
@@ -171,53 +404,94 @@ export default function Index() {
           left: 0,
           right: 0,
           bottom: 0,
-          paddingHorizontal: 20,
-          paddingVertical: 0,
-          flexDirection: "row",
-          justifyContent: "space-between",
           alignItems: "center",
-          backgroundColor: ctx.getCardBgBlur(),
-          // borderRadius: 16,
-          marginHorizontal: 22,
-          zIndex: 9999,
-          elevation: 9999,
+          zIndex: 4000,
+          elevation: 4000,
         }}
       >
-        <Pressable
-          onPress={() => router.push("/About")}
-          hitSlop={10}
+        <View
           style={{
-            padding: 10,
-            borderRadius: 8,
+            height: 50,
+            width: "90%",
+            maxWidth: CONTENT_MAX_WIDTH,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            backgroundColor: ctx.getCardBgBlur(),
+            borderRadius: 16,
           }}
         >
-          <Image
-            source={require("../assets/ClimaImages/info/info.png")}
-            style={{ width: 24, height: 24 }}
-            resizeMode="contain"
-          />
-        </Pressable>
+          <Pressable
+            onPress={() => router.push("/About")}
+            hitSlop={0}
+            style={{
+              padding: 10,
+              width: 72,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+            }}
+          >
+            <Image
+              source={require("../assets/ClimaImages/icons/info/info.png")}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+            />
+          </Pressable>
 
-        <Pressable
-          onPress={ctx.toggleModo}
-          hitSlop={10}
-          style={{
-            padding: 10,
-            borderRadius: 8,
-          }}
-        >
-          <Image
-            source={
-              ctx.isModoOscuro
-                ? require("../assets/ClimaImages/icons/modes/dark-mode.png")
-                : require("../assets/ClimaImages/icons/modes/light-mode.png")
-            }
-            style={{ width: 24, height: 24 }}
-            resizeMode="contain"
-          />
-        </Pressable>
+          <Pressable
+            onPress={() => {
+              setCityDraft('');
+              setIsCityInputOpen((v) => {
+                const next = !v;
+                if (next) {
+                  setTimeout(() => cityInputRef.current?.focus(), 50);
+                } else {
+                  Keyboard.dismiss();
+                }
+                return next;
+              });
+            }}
+            hitSlop={0}
+            style={{
+              padding: 10,
+              width: 72,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+            }}
+          >
+            <Image
+              source={require("../assets/ClimaImages/icons/location/world.png")}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={ctx.toggleModo}
+            hitSlop={0}
+            style={{
+              padding: 10,
+              width: 72,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 8,
+            }}
+          >
+            <Image
+              source={
+                ctx.isModoOscuro
+                  ? require("../assets/ClimaImages/icons/modes/light-mode.png")
+                  : require("../assets/ClimaImages/icons/modes/dark-mode.png")
+              }
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
+            />
+          </Pressable>
+        </View>
       </View>
-    </ImageBackground>
+    </ImageBackground >
 
   );
 }
