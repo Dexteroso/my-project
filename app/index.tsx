@@ -337,7 +337,7 @@ export default function Index() {
               PRONÓSTICO POR HORA
             </Text>
           </View>
-          <HourlyForecast items={hourly} />
+          <HourlyForecast key={city} items={hourly} />
         </View>
 
         <View
@@ -395,6 +395,7 @@ export default function Index() {
             <DailyForecast items={daily} />
           </View>
         </View>
+        
       </View>
 
 
